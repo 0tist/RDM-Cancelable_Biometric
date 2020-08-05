@@ -1,0 +1,6 @@
+g++ nonInvertibility.cpp -std=c++17 \
+-I /usr/local/Cellar/python/3.7.8/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
+-I /usr/local/Cellar/opencv/4.3.0_5/include/opencv4/ \
+-L /usr/local/Cellar/python/3.7.8/Frameworks/Python.framework/Versions/3.7/lib \-lpython3.7 -lopencv_core -lopencv_imgcodecs -lopencv_imgproc -lopencv_highgui
+
+./a.out

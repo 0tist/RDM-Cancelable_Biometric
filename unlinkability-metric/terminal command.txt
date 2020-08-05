@@ -1,0 +1,6 @@
+g++ evaluateUnlinkability.cpp -std=c++14 \
+-I /usr/local/Cellar/python/3.7.8/Frameworks/Python.framework/Versions/3.7/include/python3.7m \
+-I /usr/local/lib/python3.7/site-packages/numpy/core/include \
+-L /usr/local/Cellar/python/3.7.8/Frameworks/Python.framework/Versions/3.7/lib \-lpython3.7
+
+./a.out
