@@ -31,14 +31,14 @@ namespace fs = std::filesystem;
 #define MAX_double numeric_limits<double>::infinity()
 
 pair<double, double> m_and_c(pair<double, double> fp, pair<double, double> rp){
-    double xp = fp.first;
-    double yp = fp.second;
+    double xp = double(fp.first);
+    double yp = double(fp.second);
 
-    double xo = rp.first;
-    double yo = rp.second;
+    double xo = double(rp.first);
+    double yo = double(rp.second);
     if(xp-xo != 0){
-        double slope = (yp - yo) / (xp - xo);
-        double intercept = (yo*xp - yp*xo) / (xp - xo);
+        double slope = double(yp - yo) / double(xp - xo);
+        double intercept = double(yo*xp - yp*xo) / double(xp - xo);
         return make_pair(slope, intercept);
     }
     else return make_pair(MAX_double, MAX_double);
@@ -69,10 +69,18 @@ double L2_dist(pair<double, double> p1, pair<double, double> p2){
     x2 = p2.first;
     y2 = p2.second;
     
-    return sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2));
+    return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
 }
 
-
+pair<double, double> shift_origin(pair<int, int> primary, pair<int, int> secondary){
+    double yp = primary.second;
+    double xp = primary.first;
+    
+    double xs = secondary.first;
+    double ys = secondary.second;
+    
+    return make_pair(yp-ys, xp-xs);
+}
 int main(){
     
     string path = "./data";
@@ -93,28 +101,36 @@ int main(){
     ncols = fp_orig.cols;
     
     if(nrows % 2 != 0)
-        nrows -= nrows;
+        nrows--;
 
-    cv::Mat fp = cv::Mat(216, 216, CV_8UC(1), cv::Scalar::all(0));
-    cv::Mat rp = cv::Mat(216, 216, CV_8UC(1), cv::Scalar::all(0));
+    cv::Mat fp = cv::Mat(200, 200, CV_8UC(1), cv::Scalar::all(0));
+    cv::Mat rp = cv::Mat(200, 200, CV_8UC(1), cv::Scalar::all(0));
     
-    for(int i=0; i<216; i++){
-        for(int j=0; j<216; j++){
-            fp.at<uchar>(i, j) = fp_orig.at<uchar>((nrows-216)/2 - 1 + i, (ncols-216)/2 - 1 + j);
-            rp.at<uchar>(i, j) = rp_orig.at<uchar>((nrows-216)/2 - 1 + i, (ncols-216)/2 - 1 + j);
+    for(int i=0; i<200; i++){
+        for(int j=0; j<200; j++){
+            fp.at<uchar>(i, j) = fp_orig.at<uchar>((nrows-200)/2 - 1 + i, (ncols-200)/2 - 1 + j);
+            rp.at<uchar>(i, j) = rp_orig.at<uchar>((nrows-200)/2 - 1 + i, (ncols-200)/2 - 1 + j);
         }
     }
     nrows = fp.rows;
     ncols = fp.cols;
 //    cout<<fp<<endl<<rp<<endl;
+
+//    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+//    cv::imshow("image", fp);
+//    cv::waitKey();
+//
+//    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+//    cv::imshow("image", rp);
+//    cv::waitKey();
     
     vector<pair<double, double>> feature_points, random_points;
-    
+    vector<pair<double, double>> ONE;
 /*
  extracting feature points and random points from the images in the 'data' folder within the current working directory
  */
     
-    for(int i=0, j= nrows/2; i<nrows/2 && j<nrows; i++, j++){
+    for(int i=0, j=nrows/2; i<nrows/2 && j<nrows; i++, j++){
         for(int y=0; y<ncols; y++){
             double fp_x = fp.at<uchar>(i, y);
             double fp_y = fp.at<uchar>(j, y);
@@ -124,8 +140,13 @@ int main(){
             
             feature_points.push_back(make_pair(fp_x, fp_y));
             random_points.push_back(make_pair(rp_x, rp_y));
+            ONE.push_back(shift_origin(make_pair(fp_x, fp_y), make_pair(rp_x, rp_y)));
         }
     }
+    
+    
+//    cout<<"feature_points size: "<<feature_points.size()<<endl;
+//    cout<<"random_points size: "<<random_points.size()<<endl;
     
     vector<pair<double, double>> slope_intercept;
     vector<double> distance;
@@ -141,11 +162,11 @@ int main(){
         pair<double, double> s_i;
         //slope and intercept
         s_i = m_and_c(feature_points.at(i), random_points.at(i));
+//        cout<<"slope: "<<s_i.first<<" intercept: "<<s_i.second<<endl;
         slope_intercept.push_back(s_i);
         //L2 distance between the points
-        double d = L2_dist(feature_points.at(i), random_points.at(i));
-        distance.push_back(d);
-        
+        double d_sq = L2_dist(feature_points.at(i), random_points.at(i));
+        distance.push_back(d_sq);
         //obtaining the two roots using the general equation of finding roots in a quadratic function
 //        cout<<i<<endl;
 //        cout<<"s_i: "<<s_i.first<<" "<<s_i.second<<endl;
@@ -157,20 +178,79 @@ int main(){
             double c = s_i.second;
             double A = m*m + 1;
             double B = 2*m*c - 2*m*yo - 2*xo;
-            double C = yo*yo - 2*c*yo + xo*xo - d*d;
-            cout<<i<<endl;
-            cout<<"A: "<<A<<" B: "<<B<<" C: "<<C<<endl;
+            double C = yo*yo - 2*c*yo + xo*xo - d_sq;
+//            cout<<i<<endl;
+//            cout<<"A: "<<A<<" B: "<<B<<" C: "<<C<<endl;
             pair<int, int> roots = return_quadRoots(A, B, C);
             from_root1.push_back(make_pair(roots.first, return_y(roots.first, m, c)));
             from_root2.push_back(make_pair(roots.second, return_y(roots.second, m, c)));
         }
         else{
-            from_root1.push_back(make_pair(random_points.at(i).first, random_points.at(i).second-d));
-            from_root2.push_back(make_pair(random_points.at(i).first, random_points.at(i).second+d));
+            from_root1.push_back(make_pair(random_points.at(i).first, random_points.at(i).second-sqrt(d_sq)));
+            from_root2.push_back(make_pair(random_points.at(i).first, random_points.at(i).second+sqrt(d_sq)));
         }
     }
+
+    /*
+     This is an auxilary technique, which considers sifting of origin, such that the obtained circle is at origin and the line connecting the rp and fp is passing from origin, therefore we don't have to deal with intercept of the line, making the whole equation simpler.
+     */
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+
     
     
+    vector<pair<double, double>> o_from_root1, o_from_root2;
+    
+    for(auto i=0; i<ONE.size(); i++){
+        double o_dist = ONE.at(i).first * ONE.at(i).first + ONE.at(i).second * ONE.at(i).second;
+        double o_slope = ONE.at(i).second / ONE.at(i).first;
+        
+        double o_root1_x = sqrt(ONE.at(i).first * ONE.at(i).first + ONE.at(i).second * ONE.at(i).second / (ONE.at(i).second / ONE.at(i).first * ONE.at(i).second / ONE.at(i).first + 1));
+        double o_root2_x =  - sqrt(ONE.at(i).first * ONE.at(i).first + ONE.at(i).second * ONE.at(i).second / (ONE.at(i).second / ONE.at(i).first * ONE.at(i).second / ONE.at(i).first + 1));
+        
+        double o_root1_y = ONE.at(i).second / ONE.at(i).first * o_root1_x;
+        double o_root2_y = ONE.at(i).second / ONE.at(i).first * o_root2_x;
+        
+        o_from_root1.push_back(make_pair(o_root1_x, o_root1_y));
+        o_from_root2.push_back(make_pair(o_root1_x, o_root2_y));
+    }
+    
+    cv::Mat o_image_from_root1, o_image_from_root2;
+    o_image_from_root1 = cv::Mat(nrows, ncols, CV_8UC(1), cv::Scalar::all(0));
+    o_image_from_root2 = cv::Mat(nrows, ncols, CV_8UC(1), cv::Scalar::all(0));
+    
+    for(auto i=0; i<ONE.size(); i++){
+        o_image_from_root1.at<uchar>(i/ncols, i%ncols) = o_from_root1.at(i).first;
+        o_image_from_root1.at<uchar>(nrows/2 + i/ncols, i%ncols) = o_from_root1.at(i).second;
+        
+        o_image_from_root2.at<uchar>(i/ncols, i%ncols) = o_from_root2.at(i).first;
+        o_image_from_root2.at<uchar>(nrows/2 + i/ncols, i%ncols) = o_from_root2.at(i).second;
+    }
+    
+    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("image", o_image_from_root1);
+    cv::waitKey();
+
+    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("image", o_image_from_root2);
+    cv::waitKey();
+    
+    
+    
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
+    // *********************************************************************************************************************************
 /*
  Converting the vectors into images
  */
@@ -182,33 +262,23 @@ int main(){
 //    cout<<image_from_root1.size()<<" "<<image_from_root1.channels()<<endl;
 //    cout<<image_from_root2.size()<<" "<<image_from_root2.channels()<<endl;
     
-    for(auto i=0, j=nrows/2; i<nrows/2 && j<nrows; i++, j++){
-        for(auto y=0; y<ncols; y++){
-//            cout<<from_root1.at(i).first<<endl;
-//            cout<<from_root1.at(i).second<<endl;
-//            cout<<"-------------------------------"<<endl;
-//            cout<<from_root2.at(i).first<<endl;
-//            cout<<from_root1.at(i).second<<endl;
-//            cout<<"*******************************"<<endl;
-            image_from_root1.at<uchar>(i, y) = from_root1.at(i).first;
-            image_from_root1.at<uchar>(j, y) = from_root1.at(i).second;
-            
-            image_from_root2.at<uchar>(i, y) = from_root2.at(i).first;
-            image_from_root2.at<uchar>(j, y) = from_root2.at(i).second;
-        }
+    for(auto i=0; i<from_root1.size(); i++){
+        image_from_root1.at<uchar>(i/ncols, i%ncols) = from_root1.at(i).first;
+        image_from_root1.at<uchar>(nrows/2 + i/ncols, i%ncols) = from_root1.at(i).second;
+        
+        image_from_root2.at<uchar>(i/ncols, i%ncols) = from_root2.at(i).first;
+        image_from_root2.at<uchar>(nrows/2 + i/ncols, i%ncols) = from_root2.at(i).second;
     }
+    
 //    cout<<"****************************************";
 //    cout<<image_from_root2<<endl;
 //    cout<<"*****************************************";
-    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
-    cv::imshow("image", image_from_root1);
-    cv::waitKey();
-    cout<<"image size: "<<image_from_root1.size()<<endl;
-    
-    
-//    cv::Mat my_photo = cv::imread("/Users/jay.0tist/Downloads/00100sPORTRAIT_00100_BURST20191207170526443_COVER.jpg");
 //    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
-//    cv::imshow("image", my_photo);
+//    cv::imshow("image", image_from_root1);
+//    cv::waitKey();
+//
+//    cv::namedWindow("image", cv::WINDOW_AUTOSIZE);
+//    cv::imshow("image", image_from_root2);
 //    cv::waitKey();
     return 0;
 }
