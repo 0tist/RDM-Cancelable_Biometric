@@ -126,15 +126,15 @@ plot(bins1./5,count1/115,':','linewidth',4);
 
 %% 
 % hold on;
-% figure(5);
-% [count, bins] = hist(g);
-% [count1, bins1] = hist(im);
-% count = smooth(count,'lowess');
-% count1 = smooth(count1,'lowess');  %lowess
-% plot(bins1./7,count1/9900,'-d','linewidth',2);
-% xlabel('Normalised Score');
-% ylabel('Normalised Frequency');
-% legend('Impostor', 'Brute Force Genuine', 'Brute Force Impostor');
+figure(5);
+[count, bins] = hist(g);
+[count1, bins1] = hist(im);
+count = smooth(count,'lowess');
+count1 = smooth(count1,'lowess');  %lowess
+plot(bins1./7,count1/9900,'-d','linewidth',2);
+xlabel('Normalised Score');
+ylabel('Normalised Frequency');
+legend('Impostor', 'Brute Force Genuine', 'Brute Force Impostor');
 %%
 eer;
 fprintf('EER      = %d\n',EER);
